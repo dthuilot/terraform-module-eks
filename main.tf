@@ -44,7 +44,6 @@ module "eks" {
   cluster_endpoint_private_access = var.cluster_endpoint_private_access
 
   # Enable cluster encryption
-  enable_cluster_encryption = true
   cluster_encryption_config = {
     provider_key_arn = var.cluster_encryption_key_arn
     resources        = ["secrets"]

@@ -9,6 +9,50 @@ This Terraform configuration creates an Amazon EKS (Elastic Kubernetes Service) 
 - Existing VPC with private subnets tagged with `Tier = "Private"`
 - AWS CLI (optional, for kubectl configuration)
 
+## Module Source Options
+
+You can source this module in several ways:
+
+1. **From Terraform Registry (Recommended for production)**:
+```hcl
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "20.34.0"
+  # ... other configuration ...
+}
+```
+
+2. **From GitHub with specific tag/release**:
+```hcl
+module "eks" {
+  source = "github.com/terraform-aws-modules/terraform-aws-eks?ref=v20.34.0"
+  # ... other configuration ...
+}
+```
+
+3. **From GitHub master branch (Not recommended for production)**:
+```hcl
+module "eks" {
+  source = "github.com/terraform-aws-modules/terraform-aws-eks?ref=master"
+  # ... other configuration ...
+}
+```
+
+4. **From local directory**:
+```hcl
+module "eks" {
+  source = "../modules/eks"
+  # ... other configuration ...
+}
+```
+
+> **⚠️ Important Note**: Using the master branch (`?ref=master`) in production is not recommended because:
+> - The master branch may contain breaking changes
+> - It makes your infrastructure non-deterministic
+> - It can break your infrastructure when upstream changes occur
+> 
+> Always use specific versions/tags in production environments.
+
 ## Features
 
 - Creates an EKS cluster with configurable settings
