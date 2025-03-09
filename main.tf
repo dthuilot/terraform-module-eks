@@ -17,10 +17,6 @@ provider "aws" {
   region = var.region
 }
 
-data "aws_vpc" "existing" {
-  id = var.vpc_id
-}
-
 data "aws_subnets" "private" {
   filter {
     name   = "vpc-id"
@@ -32,85 +28,57 @@ data "aws_subnets" "private" {
   }
 }
 
+locals {
+  name = var.cluster_name
+  tags = merge(var.tags, {
+    GithubRepo = "terraform-aws-eks"
+    GithubOrg  = "dthuilot"
+  })
+}
+
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "20.34.0"
 
-  cluster_name    = var.cluster_name
+  cluster_name    = local.name
   cluster_version = var.cluster_version
 
-  # Cluster access
-  cluster_endpoint_public_access  = var.cluster_endpoint_public_access
-  cluster_endpoint_private_access = var.cluster_endpoint_private_access
-
-  # Enable cluster encryption
-  cluster_encryption_config = {
-    provider_key_arn = var.cluster_encryption_key_arn
-    resources        = ["secrets"]
+  # EKS Addons
+  # EKS Addons
+  cluster_addons = {
+    coredns                = {}
+    eks-pod-identity-agent = {}
+    kube-proxy             = {}
+    vpc-cni                = {}
   }
 
-  # Enable OIDC provider
-  enable_irsa = true
-
-  # VPC Configuration
   vpc_id     = var.vpc_id
   subnet_ids = data.aws_subnets.private.ids
 
-  # Cluster security group
-  create_cluster_security_group = true
-  create_node_security_group   = true
-
-  # EKS Managed Node Groups
+  # EKS Managed Node Group(s)
   eks_managed_node_groups = {
-    general = {
-      name = "general-node-group"
+    default = {
+      name = "general"
+
+      ami_type       = var.ami_type
+      instance_types = var.instance_types
 
       min_size     = var.min_size
       max_size     = var.max_size
       desired_size = var.desired_size
 
-      instance_types = var.instance_types
-      capacity_type  = var.capacity_type
-
-      # Use latest EKS optimized AMI
-      ami_type = "AL2_x86_64"
-      
-      # Enable node group autoscaling
-      enable_monitoring = true
-
-      # Add required tags
-      labels = {
-        Environment = var.environment
-        NodeGroup   = "general"
+      # Needed for Karpenter
+      iam_role_additional_policies = {
+        AmazonSSMManagedInstanceCore = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
-
-      tags = var.tags
     }
   }
 
-  # Enable EKS add-ons
-  cluster_addons = {
-    coredns = {
-      most_recent = true
-    }
-    kube-proxy = {
-      most_recent = true
-    }
-    vpc-cni = {
-      most_recent = true
-    }
-  }
+  # Enable IRSA
+  enable_irsa = true
 
   # Enable AWS Auth configmap
   enable_cluster_creator_admin_permissions = true
-  
-  # Add tags to all resources
-  tags = merge(
-    var.tags,
-    {
-      "kubernetes.io/cluster/${var.cluster_name}" = "owned"
-      GithubRepo                                  = "terraform-aws-eks"
-      GithubOrg                                   = "terraform-aws-modules"
-    }
-  )
+
+  tags = local.tags
 } 

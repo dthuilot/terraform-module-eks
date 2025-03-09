@@ -18,7 +18,7 @@ output "cluster_endpoint" {
 }
 
 output "cluster_id" {
-  description = "The ID of the EKS cluster. Note: currently a value is returned only for local EKS clusters created on Outposts"
+  description = "The ID of the EKS cluster"
   value       = module.eks.cluster_id
 }
 
@@ -30,16 +30,6 @@ output "cluster_name" {
 output "cluster_oidc_issuer_url" {
   description = "The URL on the EKS cluster for the OpenID Connect identity provider"
   value       = module.eks.cluster_oidc_issuer_url
-}
-
-output "cluster_platform_version" {
-  description = "Platform version for the cluster"
-  value       = module.eks.cluster_platform_version
-}
-
-output "cluster_status" {
-  description = "Status of the EKS cluster. One of CREATING, ACTIVE, DELETING, FAILED"
-  value       = module.eks.cluster_status
 }
 
 output "cluster_version" {
@@ -90,43 +80,20 @@ output "oidc_provider_arn" {
 }
 
 ################################################################################
-# IAM Role
+# VPC
 ################################################################################
 
-output "cluster_iam_role_name" {
-  description = "IAM role name of the EKS cluster"
-  value       = module.eks.cluster_iam_role_name
+output "vpc_id" {
+  description = "The ID of the VPC"
+  value       = module.vpc.vpc_id
 }
 
-output "cluster_iam_role_arn" {
-  description = "IAM role ARN of the EKS cluster"
-  value       = module.eks.cluster_iam_role_arn
+output "private_subnets" {
+  description = "List of IDs of private subnets"
+  value       = module.vpc.private_subnets
 }
 
-output "cluster_iam_role_unique_id" {
-  description = "Stable and unique string identifying the IAM role"
-  value       = module.eks.cluster_iam_role_unique_id
-}
-
-################################################################################
-# EKS Managed Node Group
-################################################################################
-
-output "eks_managed_node_groups" {
-  description = "Map of attribute maps for all EKS managed node groups created"
-  value       = module.eks.eks_managed_node_groups
-}
-
-output "eks_managed_node_groups_autoscaling_group_names" {
-  description = "List of the autoscaling group names created by EKS managed node groups"
-  value       = module.eks.eks_managed_node_groups_autoscaling_group_names
-}
-
-################################################################################
-# Additional
-################################################################################
-
-output "aws_auth_configmap_yaml" {
-  description = "Formatted yaml output for base aws-auth configmap containing roles used in cluster node groups/fargate profiles"
-  value       = module.eks.aws_auth_configmap_yaml
+output "public_subnets" {
+  description = "List of IDs of public subnets"
+  value       = module.vpc.public_subnets
 } 
