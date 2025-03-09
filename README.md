@@ -1,6 +1,6 @@
 # AWS EKS Cluster Terraform Configuration
 
-This Terraform configuration creates an Amazon EKS (Elastic Kubernetes Service) cluster using an existing VPC. It utilizes the official [terraform-aws-modules/eks/aws](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest) module to provision the cluster and managed node groups.
+This Terraform configuration creates an Amazon EKS (Elastic Kubernetes Service) cluster using an existing VPC. It utilizes the official [terraform-aws-modules/eks/aws](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest) module version 20.34.0 to provision the cluster and managed node groups.
 
 ## Prerequisites
 
@@ -11,172 +11,144 @@ This Terraform configuration creates an Amazon EKS (Elastic Kubernetes Service) 
 
 ## Features
 
-- Creates an EKS cluster in your existing VPC
+- Creates an EKS cluster with configurable settings
 - Provisions managed node groups with customizable configuration
 - Supports both ON_DEMAND and SPOT capacity types
 - Configurable cluster version and node instance types
-- Comprehensive tagging support
-- OIDC provider integration
+- IRSA (IAM Roles for Service Accounts) support
+- Cluster encryption using KMS
+- EKS add-ons management (CoreDNS, kube-proxy, vpc-cni)
+- AWS Auth configmap management
+- Comprehensive security group configuration
+- Flexible endpoint access configuration
 
 ## Module Usage
 
-### Using as a Child Module
+### Basic Example
 
-To use this module in your existing Terraform project, you can reference it in one of the following ways:
-
-1. **From a Local Path:**
 ```hcl
 module "eks" {
-  source = "./path/to/eks-module"
+  source  = "terraform-aws-modules/eks/aws"
+  version = "20.34.0"
 
-  # Required variables
-  vpc_id       = "vpc-12345678"
-  cluster_name = "my-production-cluster"
+  cluster_name    = "my-eks-cluster"
+  cluster_version = "1.28"
 
-  # Optional variables with custom values
-  region          = "us-west-2"
-  cluster_version = "1.27"
-  environment     = "production"
+  vpc_id     = "vpc-12345678"
+  subnet_ids = ["subnet-12345678", "subnet-87654321"]
 
-  # Node group configuration
-  desired_size    = 3
-  min_size        = 2
-  max_size        = 5
-  instance_types  = ["t3.large"]
-  capacity_type   = "ON_DEMAND"
+  # Enable IRSA
+  enable_irsa = true
 
-  tags = {
-    Environment = "production"
-    Team        = "platform"
-    ManagedBy   = "terraform"
+  # Node groups configuration
+  eks_managed_node_groups = {
+    general = {
+      name = "general-node-group"
+
+      min_size     = 1
+      max_size     = 3
+      desired_size = 2
+
+      instance_types = ["t3.medium"]
+      capacity_type  = "ON_DEMAND"
+    }
   }
-}
-```
-
-2. **From a Git Repository:**
-```hcl
-module "eks" {
-  source = "git::https://github.com/username/terraform-module-eks.git?ref=v1.0.0"
-
-  vpc_id       = module.vpc.vpc_id
-  cluster_name = "my-staging-cluster"
-
-  # Using default values for optional variables
-  tags = {
-    Environment = "staging"
-    ManagedBy   = "terraform"
-  }
-}
-```
-
-3. **Example with VPC Module Integration:**
-```hcl
-module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
-
-  name = "my-vpc"
-  cidr = "10.0.0.0/16"
-
-  azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
-
-  enable_nat_gateway = true
-  single_nat_gateway = true
-
-  tags = {
-    Terraform = "true"
-    Environment = "dev"
-  }
-
-  private_subnet_tags = {
-    Tier = "Private"
-  }
-}
-
-module "eks" {
-  source = "./path/to/eks-module"
-
-  vpc_id       = module.vpc.vpc_id
-  cluster_name = "my-eks-cluster"
-  region       = "us-west-2"
-
-  # Customizing node groups
-  desired_size   = 2
-  min_size       = 1
-  max_size       = 4
-  instance_types = ["t3.medium"]
 
   tags = {
     Environment = "dev"
     Terraform   = "true"
   }
-
-  depends_on = [module.vpc]
-}
-
-# Example outputs
-output "cluster_endpoint" {
-  description = "EKS cluster endpoint"
-  value       = module.eks.cluster_endpoint
-}
-
-output "cluster_name" {
-  description = "EKS cluster name"
-  value       = module.eks.cluster_name
 }
 ```
 
-## Direct Usage
+### Advanced Example with Multiple Node Groups and SPOT Instances
 
-1. Clone this repository:
-```bash
-git clone <repository-url>
-cd <repository-name>
-```
-
-2. Copy the example variables file and modify it with your values:
-```bash
-cp terraform.tfvars.example terraform.tfvars
-```
-
-3. Update `terraform.tfvars` with your specific configuration:
 ```hcl
-region         = "us-west-2"
-vpc_id         = "vpc-12345678" # Your VPC ID
-cluster_name   = "my-eks-cluster"
-cluster_version = "1.27"
-environment    = "dev"
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "20.34.0"
 
-# Node group configuration
-desired_size    = 2
-min_size        = 1
-max_size        = 3
-instance_types  = ["t3.medium"]
-capacity_type   = "ON_DEMAND"
+  cluster_name    = "my-eks-cluster"
+  cluster_version = "1.28"
 
-tags = {
-  Environment = "dev"
-  Terraform   = "true"
-  Project     = "my-project"
-  Owner       = "team-name"
+  vpc_id     = "vpc-12345678"
+  subnet_ids = ["subnet-12345678", "subnet-87654321"]
+
+  # Cluster access configuration
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_private_access = true
+
+  # Enable cluster encryption
+  enable_cluster_encryption = true
+  cluster_encryption_config = {
+    provider_key_arn = "arn:aws:kms:region:account:key/key-id"
+    resources        = ["secrets"]
+  }
+
+  # Enable IRSA
+  enable_irsa = true
+
+  # Node groups configuration
+  eks_managed_node_groups = {
+    # On-demand node group for critical workloads
+    critical = {
+      name = "critical-workloads"
+
+      min_size     = 2
+      max_size     = 4
+      desired_size = 2
+
+      instance_types = ["t3.large"]
+      capacity_type  = "ON_DEMAND"
+
+      labels = {
+        Environment = "production"
+        NodeGroup   = "critical"
+        Workload    = "critical"
+      }
+    }
+
+    # Spot instances for cost optimization
+    spot = {
+      name = "spot-workloads"
+
+      min_size     = 1
+      max_size     = 10
+      desired_size = 2
+
+      instance_types = ["t3.medium", "t3.large"]
+      capacity_type  = "SPOT"
+
+      labels = {
+        Environment = "production"
+        NodeGroup   = "spot"
+        Workload    = "general"
+      }
+    }
+  }
+
+  # Enable EKS add-ons
+  cluster_addons = {
+    coredns = {
+      most_recent = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
+    vpc-cni = {
+      most_recent = true
+    }
+  }
+
+  # Enable AWS Auth configmap
+  enable_cluster_creator_admin_permissions = true
+
+  tags = {
+    Environment = "production"
+    Terraform   = "true"
+    Project     = "my-project"
+  }
 }
-```
-
-4. Initialize Terraform:
-```bash
-terraform init
-```
-
-5. Review the planned changes:
-```bash
-terraform plan
-```
-
-6. Apply the configuration:
-```bash
-terraform apply
 ```
 
 ## Inputs
@@ -186,8 +158,11 @@ terraform apply
 | region | AWS region | `string` | `"us-west-2"` | no |
 | vpc_id | ID of the existing VPC | `string` | n/a | yes |
 | cluster_name | Name of the EKS cluster | `string` | `"my-eks-cluster"` | no |
-| cluster_version | Kubernetes version to use for the EKS cluster | `string` | `"1.27"` | no |
+| cluster_version | Kubernetes version to use for the EKS cluster | `string` | `"1.28"` | no |
 | environment | Environment name for the cluster | `string` | `"dev"` | no |
+| cluster_endpoint_public_access | Enable public API server endpoint access | `bool` | `true` | no |
+| cluster_endpoint_private_access | Enable private API server endpoint access | `bool` | `true` | no |
+| cluster_encryption_key_arn | ARN of the KMS key used for cluster encryption | `string` | `null` | no |
 | desired_size | Desired number of worker nodes | `number` | `2` | no |
 | min_size | Minimum number of worker nodes | `number` | `1` | no |
 | max_size | Maximum number of worker nodes | `number` | `3` | no |
@@ -201,13 +176,15 @@ terraform apply
 |------|-------------|
 | cluster_endpoint | Endpoint for EKS control plane |
 | cluster_security_group_id | Security group ID attached to the EKS cluster |
-| cluster_iam_role_name | IAM role name of the EKS cluster |
+| cluster_iam_role_arn | IAM role ARN of the EKS cluster |
 | cluster_certificate_authority_data | Base64 encoded certificate data required to communicate with the cluster |
 | cluster_name | The name of the EKS cluster |
 | cluster_oidc_issuer_url | The URL on the EKS cluster for the OpenID Connect identity provider |
+| oidc_provider_arn | The ARN of the OIDC Provider |
 | cluster_version | The Kubernetes version for the EKS cluster |
 | cluster_addons | Map of attribute maps for all EKS cluster addons enabled |
 | eks_managed_node_groups | Map of attribute maps for all EKS managed node groups created |
+| aws_auth_configmap_yaml | Formatted yaml output for aws-auth configmap |
 
 ## Connecting to the Cluster
 
@@ -225,16 +202,31 @@ kubectl get nodes
 ## Important Notes
 
 1. The VPC must have private subnets tagged with `Tier = "Private"` for the EKS cluster.
-2. The cluster endpoint is configured for public access by default. Modify `cluster_endpoint_public_access` in `main.tf` if you need to change this.
+2. The cluster endpoint is configured for both public and private access by default.
 3. Node groups use the latest Amazon Linux 2 EKS-optimized AMI by default.
-4. OIDC provider is enabled by default for service account integration.
+4. IRSA (IAM Roles for Service Accounts) is enabled by default.
+5. Cluster encryption is enabled by default for secrets.
+6. AWS Auth configmap is configured to allow cluster creator admin permissions.
 
-## Security Considerations
+## Security Best Practices
 
-- The cluster endpoint is publicly accessible by default. Consider setting `cluster_endpoint_public_access = false` for production environments.
-- Use appropriate IAM roles and security groups for production deployments.
-- Consider enabling control plane logging for better visibility.
-- Review and adjust the security group rules as needed.
+1. **Endpoint Access**:
+   - Consider disabling public endpoint access in production environments
+   - Enable private endpoint access for internal communication
+
+2. **Node Security**:
+   - Use the latest EKS-optimized AMI
+   - Enable node group monitoring
+   - Implement proper security groups
+
+3. **Encryption**:
+   - Enable cluster encryption for secrets
+   - Use customer-managed KMS keys for better control
+
+4. **Authentication**:
+   - Use IRSA for pod-level IAM permissions
+   - Properly configure aws-auth configmap
+   - Implement least privilege access
 
 ## Contributing
 
@@ -252,4 +244,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - [EKS Module Documentation](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest)
 - [AWS EKS Documentation](https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html)
-- [Terraform Documentation](https://www.terraform.io/docs) 
+- [Terraform Documentation](https://www.terraform.io/docs)
+- [EKS Best Practices](https://aws.github.io/aws-eks-best-practices/) 

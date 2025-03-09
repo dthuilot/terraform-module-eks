@@ -18,13 +18,31 @@ variable "cluster_name" {
 variable "cluster_version" {
   description = "Kubernetes version to use for the EKS cluster"
   type        = string
-  default     = "1.27"
+  default     = "1.28"
 }
 
 variable "environment" {
   description = "Environment name for the cluster"
   type        = string
   default     = "dev"
+}
+
+variable "cluster_endpoint_public_access" {
+  description = "Enable public API server endpoint access"
+  type        = bool
+  default     = true
+}
+
+variable "cluster_endpoint_private_access" {
+  description = "Enable private API server endpoint access"
+  type        = bool
+  default     = true
+}
+
+variable "cluster_encryption_key_arn" {
+  description = "ARN of the KMS key used for cluster encryption"
+  type        = string
+  default     = null
 }
 
 variable "desired_size" {
