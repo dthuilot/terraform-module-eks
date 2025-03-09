@@ -18,7 +18,117 @@ This Terraform configuration creates an Amazon EKS (Elastic Kubernetes Service) 
 - Comprehensive tagging support
 - OIDC provider integration
 
-## Usage
+## Module Usage
+
+### Using as a Child Module
+
+To use this module in your existing Terraform project, you can reference it in one of the following ways:
+
+1. **From a Local Path:**
+```hcl
+module "eks" {
+  source = "./path/to/eks-module"
+
+  # Required variables
+  vpc_id       = "vpc-12345678"
+  cluster_name = "my-production-cluster"
+
+  # Optional variables with custom values
+  region          = "us-west-2"
+  cluster_version = "1.27"
+  environment     = "production"
+
+  # Node group configuration
+  desired_size    = 3
+  min_size        = 2
+  max_size        = 5
+  instance_types  = ["t3.large"]
+  capacity_type   = "ON_DEMAND"
+
+  tags = {
+    Environment = "production"
+    Team        = "platform"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+2. **From a Git Repository:**
+```hcl
+module "eks" {
+  source = "git::https://github.com/username/terraform-module-eks.git?ref=v1.0.0"
+
+  vpc_id       = module.vpc.vpc_id
+  cluster_name = "my-staging-cluster"
+
+  # Using default values for optional variables
+  tags = {
+    Environment = "staging"
+    ManagedBy   = "terraform"
+  }
+}
+```
+
+3. **Example with VPC Module Integration:**
+```hcl
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+  version = "~> 5.0"
+
+  name = "my-vpc"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["us-west-2a", "us-west-2b", "us-west-2c"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
+
+  enable_nat_gateway = true
+  single_nat_gateway = true
+
+  tags = {
+    Terraform = "true"
+    Environment = "dev"
+  }
+
+  private_subnet_tags = {
+    Tier = "Private"
+  }
+}
+
+module "eks" {
+  source = "./path/to/eks-module"
+
+  vpc_id       = module.vpc.vpc_id
+  cluster_name = "my-eks-cluster"
+  region       = "us-west-2"
+
+  # Customizing node groups
+  desired_size   = 2
+  min_size       = 1
+  max_size       = 4
+  instance_types = ["t3.medium"]
+
+  tags = {
+    Environment = "dev"
+    Terraform   = "true"
+  }
+
+  depends_on = [module.vpc]
+}
+
+# Example outputs
+output "cluster_endpoint" {
+  description = "EKS cluster endpoint"
+  value       = module.eks.cluster_endpoint
+}
+
+output "cluster_name" {
+  description = "EKS cluster name"
+  value       = module.eks.cluster_name
+}
+```
+
+## Direct Usage
 
 1. Clone this repository:
 ```bash
