@@ -42,8 +42,8 @@ module "eks" {
 
   cluster_name    = local.name
   cluster_version = var.cluster_version
-
-  # EKS Addons
+  cluster_endpoint_public_access  = true
+ 
   # EKS Addons
   cluster_addons = {
     coredns                = {}
