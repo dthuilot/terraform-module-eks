@@ -50,6 +50,7 @@ module "eks" {
     eks-pod-identity-agent = {}
     kube-proxy             = {}
     vpc-cni                = {}
+    eks-kube-state-metrics = {}
   }
 
   vpc_id     = var.vpc_id
